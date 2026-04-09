@@ -40,3 +40,7 @@ This project is licensed under the [MIT License](LICENSE).
 ### Haftung nach deutschem Recht
 
 Die Software wird unentgeltlich zur Verfügung gestellt. Eine Haftung des Autors besteht nur für Vorsatz und grobe Fahrlässigkeit (§§ 521, 599 BGB analog). Im Übrigen gilt die MIT-Lizenz.
+
+## Acknowledgements
+
+Built with the help of [Claude Code](https://claude.com/claude-code), Anthropic's CLI for agentic software development.
