@@ -1,0 +1,33 @@
+node_modules/
+.env
+.env.*
+*.json.bak
+.DS_Store
+Thumbs.db
+
+# Credentials and tokens — MUST NEVER be committed
+credentials/
+tokens.json
+token.json
+*.token
+*.tokens.json
+client_secret*.json
+credentials.json
+oauth_client*.json
+
+# Exported mail data (personal content)
+*.eml
+MailExports/
+exports/
+
+# Logs
+*.log
+audit.log
+
+# Local editor / tool state
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

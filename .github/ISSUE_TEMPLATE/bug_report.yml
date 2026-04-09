@@ -1,0 +1,73 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Do NOT paste sensitive data
+
+        Please do **not** include in this issue:
+        - email contents, subjects, or sender/recipient addresses
+        - Gmail message IDs or thread IDs
+        - OAuth tokens, client IDs, client secrets, or any part of `client_secret.json` / `tokens.json`
+        - screenshots of your inbox
+
+        If you need to share a reproduction, redact or use placeholder data.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you expect, what did you get?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. In Claude, ask "..."
+        2. The tool `...` is called
+        3. Error / wrong result: ...
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "e.g. 20.11.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. macOS 15.3"
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: "Claude Desktop 0.x / Claude Code / other"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste any relevant error messages. **Redact email addresses, IDs, and tokens first.**
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have removed all personal data, email contents, and credentials from this report.
+          required: true

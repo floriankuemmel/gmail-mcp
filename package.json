@@ -1,0 +1,21 @@
+{
+  "name": "mcp-gmail",
+  "version": "1.0.0",
+  "description": "Local Gmail MCP server for Claude Desktop — 27 tools, OAuth, runs entirely on your own machine.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Florian Kuemmel",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "setup": "node setup-auth.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "googleapis": "144.0.0",
+    "open": "10.1.0"
+  }
+}
