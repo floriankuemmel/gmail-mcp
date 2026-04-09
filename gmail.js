@@ -247,20 +247,30 @@ function decodeBase64Url(data) {
 function htmlToText(html) {
   if (!html) return '';
   let s = html;
-  s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
-  s = s.replace(/<style[\s\S]*?<\/style>/gi, '');
-  s = s.replace(/<head[\s\S]*?<\/head>/gi, '');
-  s = s.replace(/<!--[\s\S]*?-->/g, '');
+  // Strip dangerous blocks in a loop so nested/obfuscated variants like
+  // `<scr<script>ipt>` cannot survive a single pass.
+  const stripPatterns = [
+    /<script[\s\S]*?<\/script>/gi,
+    /<style[\s\S]*?<\/style>/gi,
+    /<head[\s\S]*?<\/head>/gi,
+    /<!--[\s\S]*?-->/g,
+  ];
+  let prev;
+  do {
+    prev = s;
+    for (const re of stripPatterns) s = s.replace(re, '');
+  } while (s !== prev);
   s = s.replace(/<\/(p|div|h[1-6]|li|tr|table|section|article|header|footer)>/gi, '\n');
   s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<\/?[^>]+>/g, '');
+  // Decode entities. `&amp;` MUST be last so `&amp;lt;` does not collapse to `<`.
   s = s.replace(/&nbsp;/gi, ' ')
-       .replace(/&amp;/gi, '&')
        .replace(/&lt;/gi, '<')
        .replace(/&gt;/gi, '>')
        .replace(/&quot;/gi, '"')
        .replace(/&#39;/gi, "'")
-       .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)));
+       .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+       .replace(/&amp;/gi, '&');
   s = s.replace(/[ \t]+/g, ' ');
   s = s.replace(/\n[ \t]+/g, '\n');
   s = s.replace(/\n{3,}/g, '\n\n');
