@@ -262,7 +262,12 @@ function htmlToText(html) {
   } while (s !== prev);
   s = s.replace(/<\/(p|div|h[1-6]|li|tr|table|section|article|header|footer)>/gi, '\n');
   s = s.replace(/<br\s*\/?>/gi, '\n');
-  s = s.replace(/<\/?[^>]+>/g, '');
+  // Loop the generic tag strip so obfuscated nestings like `<a<b>c>` cannot
+  // leave residual `<...>` after a single pass.
+  do {
+    prev = s;
+    s = s.replace(/<\/?[^>]+>/g, '');
+  } while (s !== prev);
   // Decode entities. `&amp;` MUST be last so `&amp;lt;` does not collapse to `<`.
   s = s.replace(/&nbsp;/gi, ' ')
        .replace(/&lt;/gi, '<')
