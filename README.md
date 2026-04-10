@@ -35,15 +35,7 @@ A typical session (one search, three reads, one label list) costs roughly **3 50
 
 Each of the 27 tools can be individually controlled in Claude Desktop's settings. For every tool you can choose to allow it automatically, require confirmation each time, or block it entirely. No code changes needed.
 
-For more control, the server also supports three tool profiles via environment variables:
-
-| Profile | Tools | Use case |
-|---|---:|---|
-| `read` | 10 | Read-only access, no write operations |
-| `write` | 24 | Read + send, draft, label, star, mark |
-| `admin` | 26 | Full access including trash, bulk actions, and deletions |
-
-See [INSTALL.md](./INSTALL.md#optional--advanced-configuration) for all configuration options.
+See [FEATURES.md](./FEATURES.md#configuration) for tool profiles and [INSTALL.md](./INSTALL.md#optional--advanced-configuration) for all configuration options.
 
 ## Getting started
 

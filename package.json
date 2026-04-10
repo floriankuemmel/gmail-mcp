@@ -1,6 +1,6 @@
 {
   "name": "mcp-gmail",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local Gmail MCP server for Claude Desktop. 27 tools, OAuth, runs entirely on your own machine.",
   "type": "module",
   "private": true,
