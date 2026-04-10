@@ -53,7 +53,7 @@ See [INSTALL.md](./INSTALL.md#optional--advanced-configuration) for all configur
 
 ## Requirements
 
-- macOS (Linux works too, except `open_in_apple_mail`)
+- macOS
 - Node.js 18 or newer
 - A Google account
 
@@ -70,7 +70,7 @@ This project is provided **"as is"**, without warranty of any kind. Use it at yo
 ## Security Notice
 
 - This MCP server handles sensitive Gmail data via OAuth 2.0. Keep your credentials safe.
-- On macOS, credentials and tokens are stored in the macOS Keychain. On Linux, they are stored as files with `chmod 600` permissions.
+- Credentials and tokens are stored in the macOS Keychain, not as files on disk.
 - The OAuth consent screen will show this app as "unverified" unless you go through Google's verification process. This is normal for personal use.
 - If you suspect your tokens have been compromised, revoke them immediately at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 

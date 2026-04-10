@@ -4,8 +4,8 @@ Step-by-step setup for the Gmail MCP Server. One-time effort — after this, the
 
 ## Prerequisites
 
-- **macOS** or **Linux** (everything except `open_in_apple_mail` is cross-platform)
-- **Node.js 18+** — [download](https://nodejs.org/) or `brew install node`
+- **macOS** (uses the macOS Keychain for secure credential storage)
+- **Node.js 18+** -- [download](https://nodejs.org/) or `brew install node`
 - **A Google account** with access to [Google Cloud Console](https://console.cloud.google.com)
 
 ## Step 1 — Install dependencies
@@ -105,8 +105,6 @@ After setup you can delete the downloaded `client_secret_*.json` from ~/Download
 
 > **Tip:** Before deleting the downloaded file, consider storing it in a password manager (1Password, Bitwarden, etc.) as a secure backup. If you ever need to set up the server on a fresh machine or after a Keychain reset, you can drop the file back into ~/Downloads/ and run `npm run setup` again instead of going through the Google Cloud Console.
 
-> **Linux:** On Linux, credentials and tokens are stored as files under `~/credentials/gmail-mcp-credentials/` with `chmod 600` permissions instead of using the Keychain.
-
 ### What is stored on your machine and why it matters
 
 After authentication, two entries are stored in your macOS Keychain under the service name `gmail-mcp`:
@@ -182,8 +180,7 @@ Alternative: switch the app to **"In Production"** in Google Cloud Console (OAut
 
 - **Immediate revocation:** [myaccount.google.com/permissions](https://myaccount.google.com/permissions) -- find your app -- **Remove access**. All existing tokens are invalidated instantly.
 - **Full teardown:** Google Cloud Console -- delete the project (`IAM & Admin -- Settings -- Shut down project`).
-- **Local (macOS):** Open Keychain Access, search for `gmail-mcp`, and delete both entries. The server will have no tokens left.
-- **Local (Linux):** Delete `~/credentials/gmail-mcp-credentials/`.
+- **Local:** Open Keychain Access, search for `gmail-mcp`, and delete both entries. The server will have no tokens left.
 
 ## Project structure
 
@@ -201,7 +198,7 @@ gmail-mcp/
 └── FEATURES.md
 ```
 
-On macOS, credentials and tokens are stored in the macOS Keychain (not on disk). On Linux, they live under `~/credentials/gmail-mcp-credentials/`, outside the project directory so they are never picked up by any project-level backup or versioning tool.
+Credentials and tokens are stored in the macOS Keychain, not on disk.
 
 ---
 

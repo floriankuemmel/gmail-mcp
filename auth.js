@@ -1,16 +1,9 @@
 import { google } from 'googleapis';
-import { readFileSync, writeFileSync, existsSync, chmodSync, renameSync } from 'fs';
 import { execFileSync } from 'child_process';
-import { homedir, platform } from 'os';
-import path from 'path';
-
-// Legacy file paths (fallback when Keychain is unavailable)
-const CREDENTIALS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'credentials.json');
-const TOKENS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'tokens.json');
+import { platform } from 'os';
 
 const KEYCHAIN_SERVICE = 'gmail-mcp';
 const VALID_ACCOUNTS = new Set(['credentials', 'tokens']);
-const IS_MACOS = platform() === 'darwin';
 
 export const SCOPES = ['https://www.googleapis.com/auth/gmail.modify'];
 
@@ -24,6 +17,12 @@ let reauthRequired = false;
 // --- macOS Keychain helpers ---
 // Uses execFileSync (no shell) to prevent command injection.
 
+function assertMacOS() {
+  if (platform() !== 'darwin') {
+    throw new Error('This server requires macOS (uses the macOS Keychain for credential storage).');
+  }
+}
+
 function assertValidAccount(account) {
   if (!VALID_ACCOUNTS.has(account)) {
     throw new Error(`Invalid Keychain account name: ${account}`);
@@ -31,7 +30,7 @@ function assertValidAccount(account) {
 }
 
 export function keychainRead(account) {
-  if (!IS_MACOS) return null;
+  assertMacOS();
   assertValidAccount(account);
   try {
     const raw = execFileSync(
@@ -46,7 +45,7 @@ export function keychainRead(account) {
 }
 
 export function keychainWrite(account, data) {
-  if (!IS_MACOS) return false;
+  assertMacOS();
   assertValidAccount(account);
   const json = JSON.stringify(data);
   try {
@@ -71,80 +70,45 @@ export function keychainWrite(account, data) {
   }
 }
 
-function loadCredentials() {
-  // Try Keychain first
-  const kc = keychainRead('credentials');
-  if (kc) return kc;
-  // Fall back to file
-  if (!existsSync(CREDENTIALS_PATH)) {
-    throw new Error(
-      IS_MACOS
-        ? 'No credentials found. Please run: npm run setup'
-        : `No credentials found at ${CREDENTIALS_PATH}. Please run: npm run setup`
-    );
-  }
-  const credentials = JSON.parse(readFileSync(CREDENTIALS_PATH, 'utf8'));
-  try { chmodSync(CREDENTIALS_PATH, 0o600); } catch { /* best-effort */ }
-  return credentials;
-}
-
-function loadTokens() {
-  // Try Keychain first
-  const kc = keychainRead('tokens');
-  if (kc) return kc;
-  // Fall back to file
-  if (!existsSync(TOKENS_PATH)) {
-    throw new Error('No tokens found. Please run: npm run setup');
-  }
-  return JSON.parse(readFileSync(TOKENS_PATH, 'utf8'));
-}
-
-function saveTokens(tokens) {
-  // Try Keychain first
-  if (keychainWrite('tokens', tokens)) return;
-  // Fall back to atomic file write
-  writeTokensAtomic(tokens);
-}
-
 export function getOAuth2Client() {
-  const credentials = loadCredentials();
+  const credentials = keychainRead('credentials');
+  if (!credentials) {
+    throw new Error('No credentials found in macOS Keychain. Please run: npm run setup');
+  }
   // Google Cloud Console produces either "installed" or "web" depending on client type
   const config = credentials.installed || credentials.web;
   if (!config) {
-    throw new Error('credentials.json has unknown format. Expected "installed" or "web" key.');
+    throw new Error('Stored credentials have unknown format. Expected "installed" or "web" key.');
   }
   const { client_secret, client_id, redirect_uris } = config;
   return new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-}
-
-// Atomic write (F9): write to .tmp then rename, so a crash mid-write never
-// leaves a truncated tokens.json.
-function writeTokensAtomic(tokens) {
-  const tmp = `${TOKENS_PATH}.tmp`;
-  writeFileSync(tmp, JSON.stringify(tokens, null, 2));
-  chmodSync(tmp, 0o600);
-  renameSync(tmp, TOKENS_PATH);
 }
 
 export function getAuthenticatedClient() {
   if (cachedAuth) return cachedAuth;
 
   const oAuth2Client = getOAuth2Client();
-  const tokens = loadTokens();
+  const tokens = keychainRead('tokens');
+  if (!tokens) {
+    throw new Error('No tokens found in macOS Keychain. Please run: npm run setup');
+  }
   oAuth2Client.setCredentials(tokens);
 
   // Auto-refresh tokens on expiry. F10: a thrown error inside this listener
   // would crash the process -- log and set a flag instead.
   oAuth2Client.on('tokens', (newTokens) => {
     try {
-      const current = loadTokens();
+      const current = keychainRead('tokens') || {};
       const merged = { ...current, ...newTokens };
       if (!merged.refresh_token) {
         reauthRequired = true;
         console.error('[gmail-mcp] Refresh token lost -- please run setup-auth.js again');
         return;
       }
-      saveTokens(merged);
+      if (!keychainWrite('tokens', merged)) {
+        reauthRequired = true;
+        console.error('[gmail-mcp] Token refresh write to Keychain failed');
+      }
     } catch (err) {
       reauthRequired = true;
       console.error('[gmail-mcp] Token refresh write failed:', err.message);
