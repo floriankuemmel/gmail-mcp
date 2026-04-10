@@ -1,10 +1,15 @@
 import { google } from 'googleapis';
 import { readFileSync, writeFileSync, existsSync, chmodSync, renameSync } from 'fs';
-import { homedir } from 'os';
+import { execSync } from 'child_process';
+import { homedir, platform } from 'os';
 import path from 'path';
 
+// Legacy file paths (fallback when Keychain is unavailable)
 const CREDENTIALS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'credentials.json');
 const TOKENS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'tokens.json');
+
+const KEYCHAIN_SERVICE = 'gmail-mcp';
+const IS_MACOS = platform() === 'darwin';
 
 export const SCOPES = ['https://www.googleapis.com/auth/gmail.modify'];
 
@@ -15,11 +20,81 @@ let cachedAuth = null;
 let cachedGmail = null;
 let reauthRequired = false;
 
-export function getOAuth2Client() {
+// --- macOS Keychain helpers ---
+
+export function keychainRead(account) {
+  if (!IS_MACOS) return null;
+  try {
+    const raw = execSync(
+      `security find-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" -w 2>/dev/null`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim();
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function keychainWrite(account, data) {
+  if (!IS_MACOS) return false;
+  const json = JSON.stringify(data);
+  try {
+    // Delete existing entry first (add-generic-password -U only updates the password
+    // field but can fail if the entry doesn't exist yet on some macOS versions)
+    try {
+      execSync(
+        `security delete-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" 2>/dev/null`,
+        { stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+    } catch { /* entry didn't exist, that's fine */ }
+    execSync(
+      `security add-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" -w "${json.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+      { stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    return true;
+  } catch (err) {
+    console.error('[gmail-mcp] Keychain write failed:', err.message);
+    return false;
+  }
+}
+
+function loadCredentials() {
+  // Try Keychain first
+  const kc = keychainRead('credentials');
+  if (kc) return kc;
+  // Fall back to file
+  if (!existsSync(CREDENTIALS_PATH)) {
+    throw new Error(
+      IS_MACOS
+        ? 'No credentials found. Please run: npm run setup'
+        : `No credentials found at ${CREDENTIALS_PATH}. Please run: npm run setup`
+    );
+  }
   const credentials = JSON.parse(readFileSync(CREDENTIALS_PATH, 'utf8'));
-  // Security (F5): enforce chmod 0600 on the OAuth client secret file.
-  // Prevents another local user from reading client_id/client_secret.
   try { chmodSync(CREDENTIALS_PATH, 0o600); } catch { /* best-effort */ }
+  return credentials;
+}
+
+function loadTokens() {
+  // Try Keychain first
+  const kc = keychainRead('tokens');
+  if (kc) return kc;
+  // Fall back to file
+  if (!existsSync(TOKENS_PATH)) {
+    throw new Error('No tokens found. Please run: npm run setup');
+  }
+  return JSON.parse(readFileSync(TOKENS_PATH, 'utf8'));
+}
+
+function saveTokens(tokens) {
+  // Try Keychain first
+  if (keychainWrite('tokens', tokens)) return;
+  // Fall back to atomic file write
+  writeTokensAtomic(tokens);
+}
+
+export function getOAuth2Client() {
+  const credentials = loadCredentials();
   // Google Cloud Console produces either "installed" or "web" depending on client type
   const config = credentials.installed || credentials.web;
   if (!config) {
@@ -42,26 +117,21 @@ export function getAuthenticatedClient() {
   if (cachedAuth) return cachedAuth;
 
   const oAuth2Client = getOAuth2Client();
-
-  if (!existsSync(TOKENS_PATH)) {
-    throw new Error('No tokens found. Please run setup-auth.js first.');
-  }
-
-  const tokens = JSON.parse(readFileSync(TOKENS_PATH, 'utf8'));
+  const tokens = loadTokens();
   oAuth2Client.setCredentials(tokens);
 
   // Auto-refresh tokens on expiry. F10: a thrown error inside this listener
-  // would crash the process — log and set a flag instead.
+  // would crash the process -- log and set a flag instead.
   oAuth2Client.on('tokens', (newTokens) => {
     try {
-      const current = JSON.parse(readFileSync(TOKENS_PATH, 'utf8'));
+      const current = loadTokens();
       const merged = { ...current, ...newTokens };
       if (!merged.refresh_token) {
         reauthRequired = true;
-        console.error('[gmail-mcp] Refresh token lost — please run setup-auth.js again');
+        console.error('[gmail-mcp] Refresh token lost -- please run setup-auth.js again');
         return;
       }
-      writeTokensAtomic(merged);
+      saveTokens(merged);
     } catch (err) {
       reauthRequired = true;
       console.error('[gmail-mcp] Token refresh write failed:', err.message);

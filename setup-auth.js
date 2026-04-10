@@ -1,16 +1,84 @@
-import { getOAuth2Client, SCOPES } from './auth.js';
-import { writeFileSync, mkdirSync, chmodSync } from 'fs';
-import { homedir } from 'os';
+import { getOAuth2Client, SCOPES, keychainRead, keychainWrite } from './auth.js';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync, readdirSync } from 'fs';
+import { homedir, platform } from 'os';
 import { createServer } from 'http';
 import path from 'path';
 import open from 'open';
 
-const TOKENS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'tokens.json');
+const IS_MACOS = platform() === 'darwin';
+const CREDENTIALS_DIR = path.join(homedir(), 'credentials', 'gmail-mcp-credentials');
+const CREDENTIALS_PATH = path.join(CREDENTIALS_DIR, 'credentials.json');
+const TOKENS_PATH = path.join(CREDENTIALS_DIR, 'tokens.json');
+
+// Try to find a client_secret_*.json in ~/Downloads/
+function findClientSecretInDownloads() {
+  const downloadsDir = path.join(homedir(), 'Downloads');
+  try {
+    const files = readdirSync(downloadsDir);
+    const match = files.find(f =>
+      f.startsWith('client_secret_') && f.endsWith('.apps.googleusercontent.com.json')
+    );
+    if (match) return path.join(downloadsDir, match);
+  } catch { /* Downloads folder not readable */ }
+  return null;
+}
+
+function importCredentials() {
+  // Already in Keychain?
+  if (keychainRead('credentials')) {
+    console.log('Credentials found in macOS Keychain.');
+    return;
+  }
+  // Already on disk?
+  if (existsSync(CREDENTIALS_PATH)) {
+    console.log('Credentials found at:', CREDENTIALS_PATH);
+    if (IS_MACOS) {
+      const data = JSON.parse(readFileSync(CREDENTIALS_PATH, 'utf8'));
+      if (keychainWrite('credentials', data)) {
+        console.log('Credentials migrated to macOS Keychain.');
+        console.log('You can now delete:', CREDENTIALS_PATH);
+      }
+    }
+    return;
+  }
+  // Try ~/Downloads/
+  const downloadedFile = findClientSecretInDownloads();
+  if (downloadedFile) {
+    console.log('Found credentials in Downloads:', path.basename(downloadedFile));
+    const data = JSON.parse(readFileSync(downloadedFile, 'utf8'));
+    const config = data.installed || data.web;
+    if (!config) {
+      throw new Error('Downloaded file has unknown format. Expected "installed" or "web" key.');
+    }
+    if (IS_MACOS && keychainWrite('credentials', data)) {
+      console.log('Credentials stored in macOS Keychain.');
+      console.log('You can now delete the downloaded file:', downloadedFile);
+    } else {
+      // Non-macOS fallback: copy to credentials folder
+      mkdirSync(CREDENTIALS_DIR, { recursive: true });
+      writeFileSync(CREDENTIALS_PATH, JSON.stringify(data, null, 2));
+      chmodSync(CREDENTIALS_PATH, 0o600);
+      console.log('Credentials saved at:', CREDENTIALS_PATH);
+    }
+    return;
+  }
+  throw new Error(
+    'No credentials found.\n\n' +
+    'Please download your OAuth client credentials from Google Cloud Console\n' +
+    '(APIs & Services > Credentials > your Desktop client > Download JSON)\n' +
+    'and place the file in your ~/Downloads/ folder.\n\n' +
+    'Then run this command again: npm run setup'
+  );
+}
 
 async function setup() {
+  // Step 1: Find or import credentials
+  importCredentials();
+
+  // Step 2: Create OAuth2 client (reads from Keychain or file)
   const oAuth2Client = getOAuth2Client();
 
-  // Start a local server on a free port
+  // Step 3: Start a local server on a free port
   const server = createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
@@ -62,11 +130,17 @@ async function setup() {
     throw new Error('No refresh token received. Please run setup-auth.js again.');
   }
 
-  mkdirSync(path.join(homedir(), 'credentials', 'gmail-mcp-credentials'), { recursive: true });
-  writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
-  chmodSync(TOKENS_PATH, 0o600);
+  // Step 4: Save tokens
+  if (IS_MACOS && keychainWrite('tokens', tokens)) {
+    console.log('Tokens stored in macOS Keychain.');
+  } else {
+    mkdirSync(CREDENTIALS_DIR, { recursive: true });
+    writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+    chmodSync(TOKENS_PATH, 0o600);
+    console.log('Tokens saved at:', TOKENS_PATH);
+  }
 
-  console.log('✅ Authentication successful. Tokens saved at:', TOKENS_PATH);
+  console.log('\nSetup complete. You can now use the Gmail MCP server.');
 }
 
 setup().catch(console.error);
