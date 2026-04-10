@@ -1,14 +1,14 @@
 # Gmail MCP Server
 
-A local [MCP server](https://modelcontextprotocol.io/) that lets Claude Desktop (or Claude Code) read, write, organize, and export your Gmail. Runs entirely on your own Mac — no proxy, no cloud, nothing in between.
+A local [MCP server](https://modelcontextprotocol.io/) that lets Claude Desktop (or Claude Code) read, write, organize, and export your Gmail. Runs entirely on your own Mac. No proxy, no cloud, nothing in between.
 
 **27 tools**, built with a focus on safety and low token usage.
 
 ## Getting started
 
-1. **[INSTALL.md](./INSTALL.md)** — one-time setup (Google Cloud, credentials, Claude Desktop)
-2. **[SECURITY.md](./SECURITY.md)** — what the server does to protect your mailbox, and how to audit it yourself
-3. **[FEATURES.md](./FEATURES.md)** — the 27 tools and how this server compares to other Gmail MCPs
+1. **[INSTALL.md](./INSTALL.md):** one-time setup (Google Cloud, credentials, Claude Desktop)
+2. **[SECURITY.md](./SECURITY.md):** what the server does to protect your mailbox, and how to audit it yourself
+3. **[FEATURES.md](./FEATURES.md):** the 27 tools and how this server compares to other Gmail MCPs
 
 ## Requirements
 
@@ -42,5 +42,7 @@ This project is licensed under the [MIT License](LICENSE).
 Die Software wird unentgeltlich zur Verfügung gestellt. Eine Haftung des Autors besteht nur für Vorsatz und grobe Fahrlässigkeit (§§ 521, 599 BGB analog). Im Übrigen gilt die MIT-Lizenz.
 
 ## Acknowledgements
+
+Special thanks to [David Sparks](https://www.macsparky.com) and his excellent [Robot Assistant Field Guide](https://learn.macsparky.com/p/rafg26), which taught me how to think about AI automation and gave me the motivation to build my own tools.
 
 Built with the help of [Claude Code](https://claude.com/claude-code), Anthropic's CLI for agentic software development.
