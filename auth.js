@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { readFileSync, writeFileSync, existsSync, chmodSync, renameSync } from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { homedir, platform } from 'os';
 import path from 'path';
 
@@ -9,6 +9,7 @@ const CREDENTIALS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credenti
 const TOKENS_PATH = path.join(homedir(), 'credentials', 'gmail-mcp-credentials', 'tokens.json');
 
 const KEYCHAIN_SERVICE = 'gmail-mcp';
+const VALID_ACCOUNTS = new Set(['credentials', 'tokens']);
 const IS_MACOS = platform() === 'darwin';
 
 export const SCOPES = ['https://www.googleapis.com/auth/gmail.modify'];
@@ -21,12 +22,21 @@ let cachedGmail = null;
 let reauthRequired = false;
 
 // --- macOS Keychain helpers ---
+// Uses execFileSync (no shell) to prevent command injection.
+
+function assertValidAccount(account) {
+  if (!VALID_ACCOUNTS.has(account)) {
+    throw new Error(`Invalid Keychain account name: ${account}`);
+  }
+}
 
 export function keychainRead(account) {
   if (!IS_MACOS) return null;
+  assertValidAccount(account);
   try {
-    const raw = execSync(
-      `security find-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" -w 2>/dev/null`,
+    const raw = execFileSync(
+      'security',
+      ['find-generic-password', '-s', KEYCHAIN_SERVICE, '-a', account, '-w'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
     ).trim();
     return JSON.parse(raw);
@@ -37,18 +47,21 @@ export function keychainRead(account) {
 
 export function keychainWrite(account, data) {
   if (!IS_MACOS) return false;
+  assertValidAccount(account);
   const json = JSON.stringify(data);
   try {
     // Delete existing entry first (add-generic-password -U only updates the password
     // field but can fail if the entry doesn't exist yet on some macOS versions)
     try {
-      execSync(
-        `security delete-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" 2>/dev/null`,
+      execFileSync(
+        'security',
+        ['delete-generic-password', '-s', KEYCHAIN_SERVICE, '-a', account],
         { stdio: ['pipe', 'pipe', 'pipe'] }
       );
     } catch { /* entry didn't exist, that's fine */ }
-    execSync(
-      `security add-generic-password -s "${KEYCHAIN_SERVICE}" -a "${account}" -w "${json.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+    execFileSync(
+      'security',
+      ['add-generic-password', '-s', KEYCHAIN_SERVICE, '-a', account, '-w', json],
       { stdio: ['pipe', 'pipe', 'pipe'] }
     );
     return true;

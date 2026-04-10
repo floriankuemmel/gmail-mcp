@@ -82,26 +82,7 @@ Google recently replaced the old "consent screen" page with a 4-step wizard on t
    <img src="docs/screenshots/2.4-desktop-app-form.png" width="600">
 4. In the popup click **DOWNLOAD JSON** — a file called `client_secret_…apps.googleusercontent.com.json` lands in your Downloads folder
    <img src="docs/screenshots/2.4-client-created-download-json.png" width="200">
-5. **Move it into a credentials folder in your home directory.** The server expects the file at the exact path
-   `~/credentials/gmail-mcp-credentials/credentials.json`. Pick whichever option feels easier:
-
-   **Option A — Finder (no terminal):**
-   - Open a Finder window and press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> to jump to your home folder
-   - Create a new folder called **`credentials`**
-   - Inside it create another folder called **`gmail-mcp-credentials`**
-   - Drag the downloaded `client_secret_….json` file into that folder
-   - Rename it to exactly **`credentials.json`**
-
-   **Option B — Terminal (one command):**
-   ```bash
-   mkdir -p ~/credentials/gmail-mcp-credentials
-   mv ~/Downloads/client_secret_*.apps.googleusercontent.com.json \
-      ~/credentials/gmail-mcp-credentials/credentials.json
-   chmod 600 ~/credentials/gmail-mcp-credentials/credentials.json
-   ```
-
-   Either way, the final file must be at:
-   `~/credentials/gmail-mcp-credentials/credentials.json`
+5. **Leave the file in ~/Downloads/.** The setup script will find it automatically in the next step. No manual renaming or folder creation needed.
 
 ## Step 3 — Authenticate
 
@@ -110,37 +91,44 @@ cd ~/MCP/gmail-mcp
 npm run setup
 ```
 
-- Opens your browser with the Google login
-- Sign in with the test user from step 2.3
-- Google will warn: **"Google hasn't verified this app"** → `Advanced` → `Go to gmail-mcp-private (unsafe)` — this is expected because the app is in test mode and only you use it
-- Confirm the scope (read/write Gmail)
-- Browser shows **"Authentication successful!"** — close the window
-- Your refresh token is now at `~/credentials/gmail-mcp-credentials/tokens.json` (chmod 600)
+The setup script:
+1. Finds the `client_secret_*.json` in your ~/Downloads/ folder automatically
+2. Stores your OAuth client credentials in the **macOS Keychain** (no files on disk)
+3. Opens your browser with the Google login
+4. Sign in with the test user from step 2.3
+5. Google will warn: **"Google hasn't verified this app"** -- `Advanced` -- `Go to gmail-mcp-private (unsafe)` -- this is expected because the app is in test mode and only you use it
+6. Confirm the scope (read/write Gmail)
+7. Browser shows **"Authentication successful!"** -- close the window
+8. Your OAuth tokens are stored in the **macOS Keychain** as well
+
+After setup you can delete the downloaded `client_secret_*.json` from ~/Downloads/ -- everything is in the Keychain now.
+
+> **Tip:** Before deleting the downloaded file, consider storing it in a password manager (1Password, Bitwarden, etc.) as a secure backup. If you ever need to set up the server on a fresh machine or after a Keychain reset, you can drop the file back into ~/Downloads/ and run `npm run setup` again instead of going through the Google Cloud Console.
+
+> **Linux:** On Linux, credentials and tokens are stored as files under `~/credentials/gmail-mcp-credentials/` with `chmod 600` permissions instead of using the Keychain.
 
 ### What is stored on your machine and why it matters
 
-After authentication, two files are stored in `~/credentials/gmail-mcp-credentials/`:
+After authentication, two entries are stored in your macOS Keychain under the service name `gmail-mcp`:
 
-| File | Contents | Risk |
+| Keychain entry | Contents | Risk |
 |---|---|---|
-| `credentials.json` | Your Google Cloud OAuth client ID and client secret. Identifies your app to Google. | Medium. Not enough to access your Gmail on its own, but should still be kept private. |
-| `tokens.json` | Your OAuth refresh token and access token. | **High. Anyone who has this file can read and send mail as you, without needing your Google password.** |
+| `credentials` | Your Google Cloud OAuth client ID and client secret. Identifies your app to Google. | Medium. Not enough to access your Gmail on its own, but should still be kept private. |
+| `tokens` | Your OAuth refresh token and access token. | **High. Anyone who has this entry can read and send mail as you, without needing your Google password.** |
 
-A third file, `audit.log`, may also appear. It is a local log of MCP tool calls and contains no credentials.
+A file called `audit.log` may also appear in the project directory. It is a local log of MCP tool calls and contains no credentials.
 
 **This is how OAuth works everywhere.** Every app that connects to Google, Microsoft, Slack, or any other OAuth provider stores tokens locally on your machine. Your browser does the same. There is no alternative that avoids local token storage while keeping the server fully local.
 
-**What protects these files:**
+**What protects your credentials:**
 
-- **File permissions:** Both files are set to `chmod 600` (only your macOS user account can read them).
-- **FileVault:** If FileVault is enabled (System Settings > Privacy & Security > FileVault), your entire disk is encrypted at rest. This is the strongest protection against physical theft.
-- **Location:** The credentials folder is deliberately placed outside the project directory so it is never accidentally included in a git commit, backup, or file sync.
-- **Instant revocation:** If you suspect your tokens have been compromised, go to [myaccount.google.com/permissions](https://myaccount.google.com/permissions), find your app, and click **Remove access**. All tokens are invalidated immediately. Then delete the local files and run `npm run setup` to create new ones.
+- **macOS Keychain:** Credentials and tokens are stored in the system Keychain, the same secure storage that Safari, Mail, and other macOS apps use for passwords. The Keychain is encrypted with your login password and protected by macOS access controls. Other apps cannot read these entries without an explicit macOS permission prompt.
+- **No files on disk:** Unlike file-based storage, there is no credentials folder that could be accidentally synced to cloud storage, included in a backup, or committed to git.
+- **FileVault:** If FileVault is enabled (System Settings > Privacy & Security > FileVault), your entire disk is encrypted at rest, including the Keychain database. This is the strongest protection against physical theft.
+- **Instant revocation:** If you suspect your tokens have been compromised, go to [myaccount.google.com/permissions](https://myaccount.google.com/permissions), find your app, and click **Remove access**. All tokens are invalidated immediately. Then run `npm run setup` to create new ones.
 
 **Recommendations:**
 
-- Do not copy, email, or upload these files anywhere.
-- Do not sync the credentials folder to cloud storage (iCloud, Dropbox, Google Drive).
 - If your Mac is lost or stolen, revoke access immediately via the link above.
 - Consider enabling FileVault if it is not already active.
 
@@ -192,9 +180,10 @@ Alternative: switch the app to **"In Production"** in Google Cloud Console (OAut
 
 ## Kill switch / revoking access
 
-- **Immediate revocation:** [myaccount.google.com/permissions](https://myaccount.google.com/permissions) → `Gmail MCP Private` (or whatever you named it) → **Remove access**. All existing tokens are invalidated instantly.
-- **Full teardown:** Google Cloud Console → delete the project (`IAM & Admin → Settings → Shut down project`).
-- **Local:** delete `~/credentials/gmail-mcp-credentials/` — the server will have no tokens left on disk.
+- **Immediate revocation:** [myaccount.google.com/permissions](https://myaccount.google.com/permissions) -- find your app -- **Remove access**. All existing tokens are invalidated instantly.
+- **Full teardown:** Google Cloud Console -- delete the project (`IAM & Admin -- Settings -- Shut down project`).
+- **Local (macOS):** Open Keychain Access, search for `gmail-mcp`, and delete both entries. The server will have no tokens left.
+- **Local (Linux):** Delete `~/credentials/gmail-mcp-credentials/`.
 
 ## Project structure
 
@@ -212,7 +201,7 @@ gmail-mcp/
 └── FEATURES.md
 ```
 
-Credentials and tokens live **outside** the project directory under `~/credentials/gmail-mcp-credentials/` — deliberately, so they are never picked up by any project-level backup or versioning tool.
+On macOS, credentials and tokens are stored in the macOS Keychain (not on disk). On Linux, they live under `~/credentials/gmail-mcp-credentials/`, outside the project directory so they are never picked up by any project-level backup or versioning tool.
 
 ---
 

@@ -3,6 +3,7 @@
 ## What makes it different
 
 - **Runs only on your Mac.** No cloud, no proxy. Your mails and Google login never leave your machine.
+- **Credentials in macOS Keychain.** OAuth client secrets and tokens are stored in the system Keychain, not as files on disk. Nothing to accidentally sync, backup, or commit.
 - **Protects you from malicious mails.** A crafted email could try to trick Claude into forwarding your inbox to a stranger. This server blocks that with multiple safeguards.
 - **Asks before sending.** Claude can't send, reply, forward, trash, or bulk-modify without showing you the action first. If something goes wrong, a built-in limit stops runaway loops.
 - **Uses far fewer tokens.** Long email threads normally balloon your context because every reply quotes the previous ones. This server strips the repeats before Claude sees them.

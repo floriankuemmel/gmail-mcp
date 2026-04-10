@@ -11,7 +11,7 @@ A local [MCP server](https://modelcontextprotocol.io/) that lets Claude Desktop 
 - **Draft management** with create, update, send, and delete
 - **Organize** your mailbox with labels, archive, trash, star, read/unread, and bulk actions
 - **Export** mails as .eml files, download attachments, or open directly in Apple Mail (macOS)
-- **Privacy first** with local-only execution, strict input validation, and untrusted-content wrapping against prompt injection
+- **Privacy first** with local-only execution, macOS Keychain storage, strict input validation, and untrusted-content wrapping against prompt injection
 
 See [FEATURES.md](./FEATURES.md) for the full tool reference.
 
@@ -70,7 +70,7 @@ This project is provided **"as is"**, without warranty of any kind. Use it at yo
 ## Security Notice
 
 - This MCP server handles sensitive Gmail data via OAuth 2.0. Keep your credentials safe.
-- Tokens are stored locally on your machine. Do not commit them to version control.
+- On macOS, credentials and tokens are stored in the macOS Keychain. On Linux, they are stored as files with `chmod 600` permissions.
 - The OAuth consent screen will show this app as "unverified" unless you go through Google's verification process. This is normal for personal use.
 - If you suspect your tokens have been compromised, revoke them immediately at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
