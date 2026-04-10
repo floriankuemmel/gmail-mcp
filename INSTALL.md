@@ -33,55 +33,55 @@ This is the only part with more than a couple of clicks. Once done, never again.
 ### 2.1 — Create the project
 1. Open [console.cloud.google.com](https://console.cloud.google.com)
 2. Click **Create or select project** in the top bar
-   ![Create or select project](docs/screenshots/2.1-welcome-empty.png)
+   <img src="docs/screenshots/2.1-welcome-empty.png" width="600">
 3. In the dialog click **"New Project"**
-   ![New project button](docs/screenshots/2.1-new-project-button.png)
+   <img src="docs/screenshots/2.1-new-project-button.png" width="600">
 4. Name it, e.g., `gmail-mcp-private` — leave Organization as "No organization" — **Create**
-   ![New project form](docs/screenshots/2.1-new-project-form.png)
+   <img src="docs/screenshots/2.1-new-project-form.png" width="600">
 5. Select the new project in the top bar
-   ![Project created](docs/screenshots/2.1-project-created.png)
+   <img src="docs/screenshots/2.1-project-created.png" width="600">
 
 ### 2.2 — Enable the Gmail API
 1. Left sidebar → **APIs & Services → Library**
-   ![Sidebar Library](docs/screenshots/2.2-sidebar-library.png)
+   <img src="docs/screenshots/2.2-sidebar-library.png" width="600">
 2. Search for `gmail` → click **Gmail API**
-   ![Search Gmail](docs/screenshots/2.2-search-gmail.png)
-   ![Gmail API result](docs/screenshots/2.2-gmail-api-result.png)
+   <img src="docs/screenshots/2.2-search-gmail.png" width="600">
+   <img src="docs/screenshots/2.2-gmail-api-result.png" width="600">
 3. Click **Enable**
-   ![Enable button](docs/screenshots/2.2-enable-button.png)
+   <img src="docs/screenshots/2.2-enable-button.png" width="600">
 4. After enabling, Google shows the Gmail API details page with **Status: Enabled**. You can leave this page — the next step happens in the sidebar.
-   ![Gmail API enabled](docs/screenshots/2.2-gmail-api-enabled.png)
+   <img src="docs/screenshots/2.2-gmail-api-enabled.png" width="600">
 
 ### 2.3 — Configure the OAuth consent screen
 Google recently replaced the old "consent screen" page with a 4-step wizard on the **Google Auth Platform**.
 
 1. Left sidebar → **OAuth consent screen** (or **Google Auth Platform → Overview**)
-   ![Sidebar OAuth consent](docs/screenshots/2.3-sidebar-oauth-consent.png)
+   <img src="docs/screenshots/2.3-sidebar-oauth-consent.png" width="600">
 2. Click the blue **Get started** button. A 4-step wizard opens.
 3. **Step 1 — App Information:** App name `Gmail MCP Private`, User support email = your Gmail → **Next**
-   ![App info](docs/screenshots/2.3-step1-app-info.png)
+   <img src="docs/screenshots/2.3-step1-app-info.png" width="600">
 4. **Step 2 — Audience:** select **External** → **Next**
-   ![Audience external](docs/screenshots/2.3-step2-audience.png)
+   <img src="docs/screenshots/2.3-step2-audience.png" width="600">
 5. **Step 3 — Contact Information:** your email → **Next**
-   ![Contact info](docs/screenshots/2.3-step3-contact.png)
+   <img src="docs/screenshots/2.3-step3-contact.png" width="600">
 6. **Step 4 — Finish:** check "I agree to the Google API Services: User Data Policy" → **Continue** → **Create**
-   ![Finish](docs/screenshots/2.3-step4-finish.png)
+   <img src="docs/screenshots/2.3-step4-finish.png" width="600">
 7. Now add yourself as a test user: left sidebar → **Audience** → scroll to **Test users** → **+ Add users**
-   ![Audience add users](docs/screenshots/2.3-audience-add-users.png)
+   <img src="docs/screenshots/2.3-audience-add-users.png" width="600">
 8. Enter your Gmail address → **Save**
-   ![Test user save](docs/screenshots/2.3-test-user-save.png)
+   <img src="docs/screenshots/2.3-test-user-save.png" width="600">
 
 > **Important:** The consent screen stays in **Testing mode**. That's enough for personal use. Side effect: your refresh token expires after **7 days** and you'll need to run `npm run setup` again. If that's annoying, switch to "In Production" later — no Google verification needed while you stay below 100 users (guaranteed for a private server).
 
 ### 2.4 — Create OAuth credentials
 1. On the Google Auth Platform **Overview** page click **Create OAuth client** (or left sidebar → **Clients → + Create client**)
-   ![Create OAuth client button](docs/screenshots/2.4-create-oauth-client-button.png)
+   <img src="docs/screenshots/2.4-create-oauth-client-button.png" width="600">
 2. **Application type:** Desktop app — **required**. "Web application" will not work because `setup-auth.js` uses a dynamic `localhost` port that cannot be registered there.
-   ![Application type dropdown](docs/screenshots/2.4-application-type-dropdown.png)
+   <img src="docs/screenshots/2.4-application-type-dropdown.png" width="600">
 3. Name it, e.g., `gmail-mcp-desktop` → **Create**
-   ![Desktop app form](docs/screenshots/2.4-desktop-app-form.png)
+   <img src="docs/screenshots/2.4-desktop-app-form.png" width="600">
 4. In the popup click **DOWNLOAD JSON** — a file called `client_secret_…apps.googleusercontent.com.json` lands in your Downloads folder
-   ![Client created download JSON](docs/screenshots/2.4-client-created-download-json.png)
+   <img src="docs/screenshots/2.4-client-created-download-json.png" width="200">
 5. **Move it into a credentials folder in your home directory.** The server expects the file at the exact path
    `~/credentials/gmail-mcp-credentials/credentials.json`. Pick whichever option feels easier:
 
@@ -116,6 +116,33 @@ npm run setup
 - Confirm the scope (read/write Gmail)
 - Browser shows **"Authentication successful!"** — close the window
 - Your refresh token is now at `~/credentials/gmail-mcp-credentials/tokens.json` (chmod 600)
+
+### What is stored on your machine and why it matters
+
+After authentication, two files are stored in `~/credentials/gmail-mcp-credentials/`:
+
+| File | Contents | Risk |
+|---|---|---|
+| `credentials.json` | Your Google Cloud OAuth client ID and client secret. Identifies your app to Google. | Medium. Not enough to access your Gmail on its own, but should still be kept private. |
+| `tokens.json` | Your OAuth refresh token and access token. | **High. Anyone who has this file can read and send mail as you, without needing your Google password.** |
+
+A third file, `audit.log`, may also appear. It is a local log of MCP tool calls and contains no credentials.
+
+**This is how OAuth works everywhere.** Every app that connects to Google, Microsoft, Slack, or any other OAuth provider stores tokens locally on your machine. Your browser does the same. There is no alternative that avoids local token storage while keeping the server fully local.
+
+**What protects these files:**
+
+- **File permissions:** Both files are set to `chmod 600` (only your macOS user account can read them).
+- **FileVault:** If FileVault is enabled (System Settings > Privacy & Security > FileVault), your entire disk is encrypted at rest. This is the strongest protection against physical theft.
+- **Location:** The credentials folder is deliberately placed outside the project directory so it is never accidentally included in a git commit, backup, or file sync.
+- **Instant revocation:** If you suspect your tokens have been compromised, go to [myaccount.google.com/permissions](https://myaccount.google.com/permissions), find your app, and click **Remove access**. All tokens are invalidated immediately. Then delete the local files and run `npm run setup` to create new ones.
+
+**Recommendations:**
+
+- Do not copy, email, or upload these files anywhere.
+- Do not sync the credentials folder to cloud storage (iCloud, Dropbox, Google Drive).
+- If your Mac is lost or stolen, revoke access immediately via the link above.
+- Consider enabling FileVault if it is not already active.
 
 ## Step 4 — Wire into Claude Desktop
 

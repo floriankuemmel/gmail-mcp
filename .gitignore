@@ -3,6 +3,7 @@ node_modules/
 .env.*
 *.json.bak
 .DS_Store
+ROADMAP.md
 Thumbs.db
 
 # Credentials and tokens — MUST NEVER be committed
