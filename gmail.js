@@ -1693,6 +1693,13 @@ export async function openInAppleMail({ messageId }) {
   const senderMatch = from.match(/<(.+?)>/) || [null, from];
   const safeSender = senderMatch[1].replace(/[\r\n]/g, '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
+  // Parse Gmail date for precise matching when multiple mails share subject+sender.
+  // AppleScript date subtraction returns seconds, so we compare with a 60s tolerance.
+  const mailDate = new Date(mail.date);
+  const hasDate = !isNaN(mailDate.getTime());
+  // AppleScript needs epoch as seconds for date comparison via shell helper
+  const gmailEpoch = hasDate ? Math.floor(mailDate.getTime() / 1000) : 0;
+
   // Search mailboxes in order (APPLE_MAIL_SEARCH_ORDER)
   for (const mailboxName of APPLE_MAIL_SEARCH_ORDER) {
     const safeMailbox = mailboxName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1703,12 +1710,28 @@ export async function openInAppleMail({ messageId }) {
         set targetAccount to account "${safeAccount}"
         set targetMailbox to mailbox "${safeMailbox}" of targetAccount
         set msgList to (every message of targetMailbox whose subject is "${safeSubject}" and sender contains "${safeSender}")
-        if (count of msgList) > 0 then
+        if (count of msgList) = 0 then return "NOT_FOUND"
+        if (count of msgList) = 1 then
           open item 1 of msgList
           return "OK"
-        else
-          return "NOT_FOUND"
         end if
+        ${hasDate ? `-- Multiple matches: pick the one closest to the Gmail date.
+        -- Convert Unix epoch to an AppleScript date via: current date - now_epoch + gmail_epoch
+        set nowEpoch to (do shell script "date +%s") as integer
+        set gmailDate to (current date) - nowEpoch + ${gmailEpoch}
+        set bestMsg to item 1 of msgList
+        set bestDiff to 999999
+        repeat with msg in msgList
+          set diff to (date received of msg) - gmailDate
+          if diff < 0 then set diff to diff * -1
+          if diff < bestDiff then
+            set bestDiff to diff
+            set bestMsg to msg
+          end if
+        end repeat
+        open bestMsg
+        return "OK"` : `open item 1 of msgList
+        return "OK"`}
       end tell
     `;
 
