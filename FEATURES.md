@@ -9,7 +9,7 @@
 - **Uses far fewer tokens.** Long email threads normally balloon your context because every reply quotes the previous ones. This server strips the repeats before Claude sees them.
 - **Apple Mail integration.** Ask Claude to "open this in Mail" and it does.
 
-## All 27 tools
+## All 24 tools
 
 ### Search and read
 
@@ -42,21 +42,18 @@
 |---|---|
 | `archive_email` | Remove a mail from the inbox (keeps it in All Mail) |
 | `move_to_trash` | Move a mail to the trash |
-| `mark_read` | Mark a mail as read |
-| `mark_unread` | Mark a mail as unread |
+| `mark_read` | Mark a mail as read or unread |
 | `star_email` | Star or unstar a mail |
 | `set_label` | Add or remove a label from a mail |
-| `create_label` | Create a new label |
-| `delete_label` | Permanently delete a user label |
+| `manage_label` | Create or delete a user label |
 | `batch_modify` | Apply an action (archive, trash, read, unread, star, unstar, add/remove label) to multiple mails at once |
 
 ### Export and integration
 
 | Tool | What it does |
 |---|---|
-| `export_email` | Save a mail as a .eml file to ~/Downloads/MailExports/ |
-| `export_attachments` | Download all attachments to ~/Downloads/MailExports/Attachments/ |
-| `open_in_apple_mail` | Open a mail directly in Apple Mail (macOS only, with date-based matching) |
+| `export` | Save a mail as .eml or download its attachments |
+| `open_in_apple_mail` | Open a mail directly in Apple Mail (with date-based matching) |
 
 ## Design trade-offs
 
@@ -64,7 +61,9 @@ This server is built around a different trade-off than hosted Gmail integrations
 
 ## Token usage
 
-Measured on the same Gmail account and the same messages, compared to a hosted Gmail connector:
+This server has more tools than a minimal Gmail connector, so the tool definitions in the system prompt are larger. The trade-off: every tool result is significantly smaller because quoted thread history, signatures, and tracking pixels are stripped before Claude sees them.
+
+Per-operation comparison, measured on the same Gmail account and the same messages:
 
 | Operation | This server | Hosted Gmail connector | Savings |
 |---|---:|---:|---:|
@@ -74,9 +73,9 @@ Measured on the same Gmail account and the same messages, compared to a hosted G
 | Search 20 mails | ~1 260 tokens | ~2 630 tokens | 2x less |
 | Read one reply in a thread | ~280 tokens | ~1 460 tokens | 5x less |
 
-A typical session (one search, three reads, one label list) costs roughly **3 500 tokens here vs. 7 000 with a hosted connector**. That means Claude can work on your mailbox about twice as long before running out of context.
+The more tools Claude uses in a conversation, the more the smaller results add up. For short single-tool queries, a connector with fewer tools may use less total context. For longer sessions with multiple reads and searches, the per-result savings outweigh the larger system prompt.
 
-The biggest savings come from stripping quoted thread history, signatures, and tracking pixels before Claude reads a mail. If you ever need the raw version, you can ask for it explicitly.
+If you ever need the raw, unstripped version of a mail, you can request it with `view: "full"`.
 
 *Token counts measured on a single personal Gmail account in April 2026 using Claude Desktop. Actual results will vary depending on your mails, labels, thread length, Claude version, and the connector compared against. These numbers are provided as a rough indication, not as a benchmark.*
 
@@ -84,7 +83,7 @@ The biggest savings come from stripping quoted thread history, signatures, and t
 
 ### Per-tool permissions in Claude Desktop
 
-Every one of the 27 tools is individually visible in Claude Desktop's settings. To find them: Settings > Connectors > gmail > Configure. For each tool you can choose one of three modes:
+Every one of the 24 tools is individually visible in Claude Desktop's settings. To find them: Settings > Connectors > gmail > Configure. For each tool you can choose one of three modes:
 
 | Mode | Behavior |
 |---|---|
@@ -100,9 +99,9 @@ For a broader approach, the server supports three profiles that pre-select which
 
 | Profile | Tools | Use case |
 |---|---:|---|
-| `read` | 10 | Read-only access. No write operations are exposed to Claude. |
-| `write` | 24 | Read + reversible writes (send, draft, label, star, mark). |
-| `admin` (default) | 26 | Full access including trash, bulk actions, and deletions. |
+| `read` | 9 | Read-only access. No write operations are exposed to Claude. |
+| `write` | 22 | Read + reversible writes (send, draft, label, star, mark). |
+| `admin` (default) | 24 | Full access including trash, bulk actions, and deletions. |
 
 Set the profile in your Claude Desktop config:
 

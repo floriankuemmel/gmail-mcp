@@ -2,7 +2,7 @@
 
 A local [MCP server](https://modelcontextprotocol.io/) that lets Claude Desktop (or Claude Code) read, write, organize, and export your Gmail. Runs entirely on your own Mac. No proxy, no cloud, nothing in between.
 
-**27 tools**, built with a focus on safety and low token usage.
+**24 tools**, built with a focus on safety and low token usage.
 
 ## What it can do
 
@@ -17,7 +17,7 @@ See [FEATURES.md](./FEATURES.md) for the full tool reference.
 
 ## Token usage
 
-This server strips quoted thread history, signatures, and tracking pixels before Claude reads a mail. That means Claude can work on your mailbox longer before running out of context.
+This server has 24 tools, which means the tool definitions in the system prompt cost more than a minimal Gmail connector with fewer tools. The trade-off: every tool result is significantly smaller because the server strips quoted thread history, signatures, and tracking pixels before Claude sees them.
 
 | Operation | This server | Hosted connector | Savings |
 |---|---:|---:|---:|
@@ -27,13 +27,13 @@ This server strips quoted thread history, signatures, and tracking pixels before
 | Search 20 mails | ~1 260 tokens | ~2 630 tokens | 2x less |
 | Read one reply in a thread | ~280 tokens | ~1 460 tokens | 5x less |
 
-A typical session (one search, three reads, one label list) costs roughly **3 500 tokens here vs. 7 000 with a hosted connector**.
+The more tools Claude actually uses in a conversation, the more the smaller results add up. In a typical session (one search, three reads, one label list) the savings outweigh the larger system prompt.
 
-*Token counts measured on a single personal Gmail account in April 2026 using Claude Desktop. Actual results will vary.*
+*Token counts per operation measured on a single personal Gmail account in April 2026 using Claude Desktop. Actual results will vary.*
 
 ## Configuration
 
-Each of the 27 tools can be individually controlled in Claude Desktop's settings. For every tool you can choose to allow it automatically, require confirmation each time, or block it entirely. No code changes needed.
+Each of the 24 tools can be individually controlled in Claude Desktop's settings. For every tool you can choose to allow it automatically, require confirmation each time, or block it entirely. No code changes needed.
 
 See [FEATURES.md](./FEATURES.md#configuration) for tool profiles and [INSTALL.md](./INSTALL.md#optional--advanced-configuration) for all configuration options.
 
@@ -41,7 +41,7 @@ See [FEATURES.md](./FEATURES.md#configuration) for tool profiles and [INSTALL.md
 
 1. **[INSTALL.md](./INSTALL.md):** one-time setup (Google Cloud, credentials, Claude Desktop)
 2. **[SECURITY.md](./SECURITY.md):** what the server does to protect your mailbox, and how to audit it yourself
-3. **[FEATURES.md](./FEATURES.md):** the 27 tools and how this server compares to other Gmail MCPs
+3. **[FEATURES.md](./FEATURES.md):** the 24 tools and how this server compares to other Gmail MCPs
 
 ## Requirements
 

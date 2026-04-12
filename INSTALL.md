@@ -237,9 +237,9 @@ You can tune behavior via the `env` block in the MCP config:
 
 | Profile | Tools | Description | Recommended OAuth scope |
 |---|---:|---|---|
-| `read` | 10 | Read-only tools | `gmail.readonly` |
-| `write` | 24 | Read + reversible writes (send, draft, label, star, mark) | `gmail.modify` |
-| `admin` (default) | 26 | Everything, including `move_to_trash`, `batch_modify`, `delete_label`, `delete_draft` | `gmail.modify` |
+| `read` | 9 | Read-only tools | `gmail.readonly` |
+| `write` | 22 | Read + reversible writes (send, draft, label, star, mark) | `gmail.modify` |
+| `admin` (default) | 24 | Everything, including `move_to_trash`, `batch_modify`, and deletions | `gmail.modify` |
 
 `gmail.readonly` blocks write operations **at Google's server side** — the strongest guarantee. If you want Claude to read only, set the profile to `read` **and** grant only `gmail.readonly` during OAuth setup.
 
