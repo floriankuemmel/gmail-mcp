@@ -300,14 +300,11 @@ const TOOL_OUTPUT = {
   batch_modify: 'action_result',
   archive_email: 'action_result',
   set_label: 'action_result',
-  create_label: 'action_result',
-  delete_label: 'action_result',
+  manage_label: 'action_result',
   move_to_trash: 'action_result',
   mark_read: 'action_result',
-  mark_unread: 'action_result',
   star_email: 'action_result',
-  export_email: 'action_result',
-  export_attachments: 'action_result',
+  export: 'action_result',
   open_in_apple_mail: 'action_result'
 };
 
@@ -359,13 +356,13 @@ const PROFILE = (process.env.GMAIL_MCP_PROFILE || 'admin').toLowerCase();
 const READ_TOOLS = new Set([
   'get_profile', 'search_emails', 'read_email', 'read_thread',
   'list_labels', 'list_drafts', 'history_changes',
-  'export_email', 'export_attachments', 'open_in_apple_mail'
+  'export', 'open_in_apple_mail'
 ]);
 const WRITE_TOOLS = new Set([
   ...READ_TOOLS,
   'send_email', 'reply_email', 'forward_email',
   'create_draft', 'create_reply_draft', 'update_draft', 'send_draft', 'delete_draft',
-  'archive_email', 'set_label', 'create_label', 'mark_read', 'mark_unread', 'star_email'
+  'archive_email', 'set_label', 'manage_label', 'mark_read', 'star_email'
 ]);
 function isToolAllowed(name) {
   if (PROFILE === 'read') return READ_TOOLS.has(name);
@@ -385,29 +382,29 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 const _toolDefs = [
     {
       name: 'get_profile',
-      description: 'Email address and statistics of the Gmail account.',
+      description: 'Gmail account profile and stats.',
       inputSchema: { type: 'object', properties: {} }
     },
     {
       name: 'search_emails',
-      description: 'Searches Gmail using all Gmail operators (from:, subject:, after:, label:, is:unread, has:attachment ...). Default 5 hits, max 50.',
+      description: 'Search Gmail. Default 5, max 50.',
       inputSchema: {
         type: 'object',
         properties: {
           query: { type: 'string' },
           limit: { type: 'number', default: 5 },
-          cursor: { type: 'string', description: 'Opaque cursor from nextCursor of a previous response.' }
+          cursor: { type: 'string' }
         },
         required: ['query']
       }
     },
     {
       name: 'read_email',
-      description: 'Reads a mail. view: "summary" (headers+snippet only), "compact" (plaintext, quotes/signature/tracking stripped — default), "full" (complete body unchanged). includeHtml=true for HTML.',
+      description: 'Read a mail. view: summary/compact(default)/full.',
       inputSchema: {
         type: 'object',
         properties: {
-          messageId: { type: 'string', description: 'Aliases: id, email_id, message_id' },
+          messageId: { type: 'string' },
           view: { type: 'string', enum: ['summary', 'compact', 'full'], default: 'compact' },
           includeHtml: { type: 'boolean', default: false },
           includeAttachmentIds: { type: 'boolean', default: false }
@@ -416,7 +413,7 @@ const _toolDefs = [
     },
     {
       name: 'read_thread',
-      description: 'Reads all messages in a thread. view like read_email; in "compact" quoted passages from later messages are removed (thread-diffing). messagesLimit limits to the last N.',
+      description: 'Read all messages in a thread. view: summary/compact(default)/full.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -430,7 +427,7 @@ const _toolDefs = [
     },
     {
       name: 'list_labels',
-      description: 'Lists Gmail labels (name+ID). includeCounts=true for counts.',
+      description: 'List Gmail labels.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -440,7 +437,7 @@ const _toolDefs = [
     },
     {
       name: 'send_email',
-      description: 'Sends an email. body=plaintext, bodyHtml=HTML (optional). attachmentPaths max 25 MB.',
+      description: 'Send an email.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -451,14 +448,14 @@ const _toolDefs = [
           cc: { type: 'string' },
           bcc: { type: 'string' },
           attachmentPaths: { type: 'array', items: { type: 'string' } },
-          confirmedTaintOverride: { type: 'boolean', description: 'Only set when the server raises a security warning and the user explicitly agrees.' }
+          confirmedTaintOverride: { type: 'boolean' }
         },
         required: ['to', 'subject', 'body']
       }
     },
     {
       name: 'reply_email',
-      description: 'Replies to a mail with correct threading. replyAll=true for reply-all.',
+      description: 'Reply to a mail.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -467,14 +464,14 @@ const _toolDefs = [
           bodyHtml: { type: 'string' },
           replyAll: { type: 'boolean', default: false },
           attachmentPaths: { type: 'array', items: { type: 'string' } },
-          confirmedTaintOverride: { type: 'boolean', description: 'Only set when the server raises a security warning and the user explicitly agrees.' }
+          confirmedTaintOverride: { type: 'boolean' }
         },
         required: ['messageId', 'body']
       }
     },
     {
       name: 'forward_email',
-      description: 'Forwards a mail (including original attachments).',
+      description: 'Forward a mail with attachments.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -482,14 +479,14 @@ const _toolDefs = [
           to: { type: 'string' },
           body: { type: 'string' },
           bodyHtml: { type: 'string' },
-          confirmedTaintOverride: { type: 'boolean', description: 'Only set when the server raises a security warning and the user explicitly agrees.' }
+          confirmedTaintOverride: { type: 'boolean' }
         },
         required: ['messageId', 'to']
       }
     },
     {
       name: 'create_draft',
-      description: 'Creates a draft without sending.',
+      description: 'Create a draft.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -506,7 +503,7 @@ const _toolDefs = [
     },
     {
       name: 'create_reply_draft',
-      description: 'Creates a reply draft with correct threading.',
+      description: 'Create a reply draft.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -521,7 +518,7 @@ const _toolDefs = [
     },
     {
       name: 'update_draft',
-      description: 'Updates an existing draft (full replacement of recipients, subject, body, attachments).',
+      description: 'Replace a draft.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -539,7 +536,7 @@ const _toolDefs = [
     },
     {
       name: 'history_changes',
-      description: 'Incremental sync: all changes since startHistoryId (from get_profile). Returns added/removed mails and label changes. Gmail keeps history ~7 days.',
+      description: 'Changes since a historyId. ~7 days retention.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -554,7 +551,7 @@ const _toolDefs = [
     },
     {
       name: 'list_drafts',
-      description: 'Lists saved drafts (to, subject, snippet, draftId). Default 10, max 50.',
+      description: 'List drafts. Default 10, max 50.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -564,7 +561,7 @@ const _toolDefs = [
     },
     {
       name: 'send_draft',
-      description: 'Sends an existing draft.',
+      description: 'Send a draft.',
       inputSchema: {
         type: 'object',
         properties: { draftId: { type: 'string' } },
@@ -573,7 +570,7 @@ const _toolDefs = [
     },
     {
       name: 'delete_draft',
-      description: 'Permanently deletes a draft by draftId. Does not send the draft.',
+      description: 'Delete a draft.',
       inputSchema: {
         type: 'object',
         properties: { draftId: { type: 'string' } },
@@ -582,20 +579,20 @@ const _toolDefs = [
     },
     {
       name: 'batch_modify',
-      description: 'Action on multiple mails: archive, trash, read, unread, star, unstar, add_label, remove_label. For add_label/remove_label a labelName is required (label must already exist — use create_label first).',
+      description: 'Bulk action on multiple mails.',
       inputSchema: {
         type: 'object',
         properties: {
           messageIds: { type: 'array', items: { type: 'string' } },
           action: { type: 'string', enum: ['archive', 'trash', 'read', 'unread', 'star', 'unstar', 'add_label', 'remove_label'] },
-          labelName: { type: 'string', description: 'Required for add_label / remove_label.' }
+          labelName: { type: 'string' }
         },
         required: ['messageIds', 'action']
       }
     },
     {
       name: 'archive_email',
-      description: 'Archives a mail (removes INBOX label).',
+      description: 'Archive a mail.',
       inputSchema: {
         type: 'object',
         properties: { messageId: { type: 'string' } },
@@ -604,7 +601,7 @@ const _toolDefs = [
     },
     {
       name: 'set_label',
-      description: 'Adds or removes a label. createIfMissing creates a missing label.',
+      description: 'Add or remove a label.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -617,30 +614,21 @@ const _toolDefs = [
       }
     },
     {
-      name: 'create_label',
-      description: 'Creates a new user label. Returns the label ID. If the label already exists (case-insensitive), returns the existing one.',
+      name: 'manage_label',
+      description: 'Create or delete a label.',
       inputSchema: {
         type: 'object',
         properties: {
-          labelName: { type: 'string' }
-        },
-        required: ['labelName']
-      }
-    },
-    {
-      name: 'delete_label',
-      description: 'Permanently deletes a user label. Does not delete the mails carrying the label. System labels cannot be deleted.',
-      inputSchema: {
-        type: 'object',
-        properties: {
+          action: { type: 'string', enum: ['create', 'delete'] },
           labelName: { type: 'string' },
           labelId: { type: 'string' }
-        }
+        },
+        required: ['action', 'labelName']
       }
     },
     {
       name: 'move_to_trash',
-      description: 'Moves mail to trash.',
+      description: 'Trash a mail.',
       inputSchema: {
         type: 'object',
         properties: { messageId: { type: 'string' } },
@@ -649,25 +637,19 @@ const _toolDefs = [
     },
     {
       name: 'mark_read',
-      description: 'Marks mail as read.',
+      description: 'Mark as read or unread.',
       inputSchema: {
         type: 'object',
-        properties: { messageId: { type: 'string' } },
-        required: ['messageId']
-      }
-    },
-    {
-      name: 'mark_unread',
-      description: 'Marks mail as unread.',
-      inputSchema: {
-        type: 'object',
-        properties: { messageId: { type: 'string' } },
+        properties: {
+          messageId: { type: 'string' },
+          read: { type: 'boolean', default: true }
+        },
         required: ['messageId']
       }
     },
     {
       name: 'star_email',
-      description: 'Stars/unstars a mail.',
+      description: 'Star or unstar a mail.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -678,26 +660,20 @@ const _toolDefs = [
       }
     },
     {
-      name: 'export_email',
-      description: 'Saves mail as .eml under ~/Downloads/MailExports/.',
+      name: 'export',
+      description: 'Export a mail as .eml or download its attachments.',
       inputSchema: {
         type: 'object',
-        properties: { messageId: { type: 'string' } },
-        required: ['messageId']
-      }
-    },
-    {
-      name: 'export_attachments',
-      description: 'Downloads all attachments of a mail to ~/Downloads/MailExports/Attachments/.',
-      inputSchema: {
-        type: 'object',
-        properties: { messageId: { type: 'string' } },
+        properties: {
+          messageId: { type: 'string' },
+          format: { type: 'string', enum: ['eml', 'attachments'], default: 'eml' }
+        },
         required: ['messageId']
       }
     },
     {
       name: 'open_in_apple_mail',
-      description: 'Opens a mail in Apple Mail (macOS only).',
+      description: 'Open in Apple Mail.',
       inputSchema: {
         type: 'object',
         properties: { messageId: { type: 'string' } },
@@ -730,11 +706,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       send_draft: 'Send draft',
       move_to_trash: 'Move to trash',
       batch_modify: 'Batch modify multiple mails',
-      delete_label: 'Delete label permanently',
+      // manage_label confirmation is handled below (only for delete)
       delete_draft: 'Delete draft permanently'
     };
     if (CONFIRM_ACTIONS[name]) {
       await confirmAction(CONFIRM_ACTIONS[name], summarizeForConfirm(args));
+    }
+    if (name === 'manage_label' && args.action === 'delete') {
+      await confirmAction('Delete label permanently', summarizeForConfirm(args));
     }
 
     await audit(name, args);
@@ -759,14 +738,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'batch_modify':         result = await batchModify(args); break;
       case 'archive_email':       result = await archiveEmail(args); break;
       case 'set_label':           result = await setLabel(args); break;
-      case 'create_label':        result = await createLabel(args); break;
-      case 'delete_label':        result = await deleteLabel(args); break;
+      case 'manage_label':
+        result = args.action === 'delete'
+          ? await deleteLabel(args)
+          : await createLabel(args);
+        break;
       case 'move_to_trash':       result = await moveToTrash(args); break;
-      case 'mark_read':           result = await markRead(args); break;
-      case 'mark_unread':         result = await markUnread(args); break;
+      case 'mark_read':
+        result = (args.read === false)
+          ? await markUnread(args)
+          : await markRead(args);
+        break;
       case 'star_email':          result = await starEmail(args); break;
-      case 'export_email':        result = await exportEmail(args); break;
-      case 'export_attachments':  result = await exportAttachments(args); break;
+      case 'export':
+        result = (args.format === 'attachments')
+          ? await exportAttachments(args)
+          : await exportEmail(args);
+        break;
       case 'open_in_apple_mail':  result = await openInAppleMail(args); break;
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
